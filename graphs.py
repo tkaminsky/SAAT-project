@@ -3,6 +3,8 @@ import networkx as nx
 import random
 import matplotlib.pyplot as plt
 
+# returns network x adjacency matrix - tells how to make each function
+
 graph_dict = {}
 
 def make_small_world(n, k, p):
@@ -79,7 +81,7 @@ def make_Rbell(R, n, k):
     return nx.adjacency_matrix(G).todense() + np.eye(R * n + (R - 1) * k)
 
 def make_generic_bell(ns, ks):
-    assert len(ns) == len(ks) + 1
+    assert len(ns) == len(ks) + 1 # CHECKME: is this + or - 1?
     R = len(ns)
     G = nx.complete_graph(ns[0])
     for i in range(R - 1):
@@ -88,6 +90,8 @@ def make_generic_bell(ns, ks):
             G.add_edge(sum(ns[:i + 1]) + sum(ks[:i]) - 1, sum(ns[:i + 1]) + sum(ks[:i]))
         G = nx.disjoint_union(G, nx.complete_graph(ns[i + 1]))
         G.add_edge(sum(ns[:i + 1]) + sum(ks[:i + 1]) - 1, sum(ns[:i + 1]) + sum(ks[:i + 1]))
+
+    print(nx.adjacency_matrix(G).shape)
     return nx.adjacency_matrix(G).todense() + np.eye(sum(ns) + sum(ks))
 
 

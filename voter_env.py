@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import networkx as nx
 
-
+# takes in a graph that is fixed, and prob per voter matrix. n.run compues asynptotically best result
+# make voterend for graph and probs you want and 
 class VoterEnv:
     def __init__(
         self,
@@ -32,6 +33,10 @@ class VoterEnv:
             self.graph = np.ones((num_voters, num_voters)) - np.eye(num_voters)
         else:
             self.graph = graph
+
+        print(self.graph.shape, self.num_voters)
+
+        print(self.graph)
 
         # Visualization
         self.colors = ["green", "red", "blue", "yellow", "purple", "orange"]
