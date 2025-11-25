@@ -50,6 +50,19 @@ def make_ER(n, p):
     return nx.adjacency_matrix(er).todense() + np.eye(n)
 
 
+def make_BA(n, m):
+    """
+    Generate Barabási-Albert scale-free graph.
+    n: number of nodes
+    m: number of edges to attach from a new node to existing nodes
+    """
+    ba = nx.barabasi_albert_graph(n, m)
+    # Ensure connected
+    while not nx.is_connected(ba):
+        ba = nx.barabasi_albert_graph(n, m)
+    return nx.adjacency_matrix(ba).todense() + np.eye(n)
+
+
 # Make a 'barbell' of 3 fully-connected regions of size n, each connected by a line of size k
 def make_tribell(n, k):
     G_left = nx.complete_graph(n)
@@ -107,6 +120,10 @@ def get_graph(key):
         n = int(split_key[1])
         p = float(split_key[2])
         return make_ER(n, p)
+    elif split_key[0] == "BA":
+        n = int(split_key[1])
+        m = int(split_key[2])
+        return make_BA(n, m)
     elif split_key[0] == "tribell":
         n = int(split_key[1])
         if len(split_key) == 2:

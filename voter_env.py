@@ -34,9 +34,9 @@ class VoterEnv:
         else:
             self.graph = graph
 
-        print(self.graph.shape, self.num_voters)
+        # print(self.graph.shape, self.num_voters)
 
-        print(self.graph)
+        # print(self.graph)
 
         # Visualization
         self.colors = ["green", "red", "blue", "yellow", "purple", "orange"]
