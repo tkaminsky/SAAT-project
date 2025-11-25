@@ -11,7 +11,7 @@ import numpy as np
 
 # Fixed parameters
 N_VOTERS = 1000
-N_TRIALS = 1  # Trials per configuration (increase for more accuracy, decreases speed)
+N_TRIALS = 100  # Trials per configuration (increase for more accuracy, decreases speed)
 N_ITERATIONS = 25  # Convergence iterations per trial
 
 # Variable parameters (these define the x-axis and different plots)
