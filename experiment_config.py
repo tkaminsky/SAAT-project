@@ -29,7 +29,7 @@ PLACEMENT_METHODS = ['random', 'central', 'peripheral']
 # TRIBELL PARAMETERS
 # k = connector length between regions
 # Original request: k in (1, 250, 50) -> interpreting as [1, 50, 250]
-TRIBELL_K_VALUES = [1, 50, 250]
+TRIBELL_K_VALUES = [0, 50, 100, 150]
 
 # BARABÁSI-ALBERT PARAMETERS
 # m = edges to attach from new node to existing nodes
@@ -37,12 +37,12 @@ TRIBELL_K_VALUES = [1, 50, 250]
 # But m must be < n_voters (1000), so this doesn't make sense
 # Interpreting as: test different connectivity levels
 # Using reasonable m values for n=1000
-BA_M_VALUES = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+BA_M_VALUES = [0, 10, 20, 30, 40, 50]
 
 # ERDŐS-RÉNYI PARAMETERS  
 # p = edge probability
 # range(0.1, 1, 0.1) = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-ER_P_VALUES = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+ER_P_VALUES = [0, 0.25, 0.5, 0.75, 1.0]
 
 # =============================================================================
 # OUTPUT SETTINGS

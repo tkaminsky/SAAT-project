@@ -21,11 +21,11 @@ Expected outputs:
     - TOTAL: 330 plots
 
 Usage:
-    python systematic_experiments.py              # Run all
-    python systematic_experiments.py --test       # Quick test
-    python systematic_experiments.py --tribell    # Only tribell
-    python systematic_experiments.py --BA         # Only BA
-    python systematic_experiments.py --ER         # Only ER
+    python run_simulations.py              # Run all
+    python run_simulations.py --test       # Quick test
+    python run_simulations.py --tribell    # Only tribell
+    python run_simulations.py --BA         # Only BA
+    python run_simulations.py --ER         # Only ER
 """
 
 import numpy as np
