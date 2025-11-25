@@ -29,7 +29,7 @@ PLACEMENT_METHODS = ['random', 'central', 'peripheral']
 # TRIBELL PARAMETERS
 # k = connector length between regions
 # Original request: k in (1, 250, 50) -> interpreting as [1, 50, 250]
-TRIBELL_K_VALUES = [0, 50, 100, 150]
+TRIBELL_K_VALUES = [0, 10, 20, 30, 40, 50]
 
 # BARABÁSI-ALBERT PARAMETERS
 # m = edges to attach from new node to existing nodes
