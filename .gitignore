@@ -1,0 +1,33 @@
+# --- Python Basics ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Virtual Environments (Keep these ignored!) ---
+.venv/
+venv/
+env/
+
+# --- uv Specifics ---
+# Ignore the machine-specific Python version pointer
+.python-version
+
+# NOTE: uv.lock and pyproject.toml are deliberately OMITTED here
+# so they can be committed to the repo.
+
+# --- Distribution / Builds ---
+build/
+dist/
+experiments/
+*.egg-info/
+develop-eggs/
+
+# --- Environment Variables ---
+# NEVER commit .env files containing API keys
+.env
+
+# --- Editor / OS Junk ---
+.vscode/
+.idea/
+.DS_Store
