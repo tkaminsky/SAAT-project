@@ -10,9 +10,9 @@ Loop structure:
             For each pL value (0.0, 0.25, 0.5):
                 For each fracH value (0.0, 0.25, 0.5, 0.75, 1.0):
                     For each pH value (0.5 to 1.0) - X-AXIS:
-                        For each placement method (random, central, peripheral) - LINES:
+                        For each placement method (random, central, peripheral, optimized) - LINES:
                             Run N_TRIALS simulations
-                    Create one plot with 3 lines (one per placement method)
+                    Create one plot with 4 lines (one per placement method)
 
 Expected outputs:
     - Tribell: 3 k-values × 3 pL × 5 fracH = 45 plots
@@ -40,10 +40,13 @@ import argparse
 
 from graphs import make_tribell, make_ER, make_BA
 from voter_env import VoterEnv
-from helpers import (
+
+# Updated import to point to the file containing our new function
+from voter_placement import (
     get_centrality_placement, 
     get_peripheral_placement, 
     get_random_placement,
+    get_optimized_placement,
     create_prob_distribution
 )
 
@@ -58,6 +61,11 @@ except ImportError:
     print("ERROR: experiment_config.py not found!")
     print("Please ensure experiment_config.py is in the same directory.")
     sys.exit(1)
+
+# Ensure 'optimized' is in the placement methods list
+if 'optimized' not in PLACEMENT_METHODS:
+    PLACEMENT_METHODS.append('optimized')
+    print("Added 'optimized' to PLACEMENT_METHODS")
 
 # =============================================================================
 # CORE EXPERIMENT FUNCTIONS
@@ -121,6 +129,12 @@ def run_experiment_for_configuration(graph, actual_n_voters, fracH, pH, pL, plac
         elif method == 'peripheral':
             # Peripheral is also deterministic
             high_repute_voters = get_peripheral_placement(graph, n_high_repute)
+            for _ in range(N_TRIALS):
+                results[method] += run_single_trial(graph, actual_n_voters, high_repute_voters, pH, pL)
+
+        elif method == 'optimized':
+            # Optimized is deterministic (greedy constructive)
+            high_repute_voters = get_optimized_placement(graph, n_high_repute)
             for _ in range(N_TRIALS):
                 results[method] += run_single_trial(graph, actual_n_voters, high_repute_voters, pH, pL)
         
@@ -200,14 +214,25 @@ def run_experiment_suite(graph_name, graph_generator, graph_params_list):
                 # Create plot
                 fig, ax = plt.subplots(figsize=FIGURE_SIZE)
                 
-                colors = {'random': 'blue', 'central': 'red', 'peripheral': 'green'}
-                markers = {'random': 'o', 'central': 's', 'peripheral': '^'}
+                colors = {
+                    'random': 'blue', 
+                    'central': 'red', 
+                    'peripheral': 'green',
+                    'optimized': 'purple'
+                }
+                markers = {
+                    'random': 'o', 
+                    'central': 's', 
+                    'peripheral': '^',
+                    'optimized': '*'
+                }
                 
                 for method in PLACEMENT_METHODS:
                     ax.plot(PH_VALUES, results[method], 
-                           color=colors[method], marker=markers[method],
+                           color=colors.get(method, 'black'), 
+                           marker=markers.get(method, '.'),
                            label=method.capitalize(), linewidth=2, 
-                           markersize=4, alpha=0.7)
+                           markersize=6, alpha=0.7)
                 
                 ax.set_xlabel('pH (High-Repute Voter Accuracy)', fontsize=12)
                 ax.set_ylabel('Proportion Correct', fontsize=12)

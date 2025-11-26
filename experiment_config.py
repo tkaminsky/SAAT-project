@@ -15,12 +15,13 @@ N_TRIALS = 100  # Trials per configuration (increase for more accuracy, decrease
 N_ITERATIONS = 25  # Convergence iterations per trial
 
 # Variable parameters (these define the x-axis and different plots)
-PH_VALUES = [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00]  # x-axis: explicit list to avoid float errors
+PH_VALUES = [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00]  # x-axis
 PL_VALUES = [0.0, 0.25, 0.5]  # Each pL produces separate set of plots
 FRACH_VALUES = [0.0, 0.25, 0.5, 0.75, 1.0]  # Each fracH produces separate plot
 
 # Placement methods to compare (appear as different lines on same plot)
-PLACEMENT_METHODS = ['random', 'central', 'peripheral']
+# Added 'optimized' to the list
+PLACEMENT_METHODS = ['random', 'central', 'peripheral', 'optimized']
 
 # =============================================================================
 # GRAPH-SPECIFIC PARAMETERS
@@ -28,21 +29,17 @@ PLACEMENT_METHODS = ['random', 'central', 'peripheral']
 
 # TRIBELL PARAMETERS
 # k = connector length between regions
-# Original request: k in (1, 250, 50) -> interpreting as [1, 50, 250]
 TRIBELL_K_VALUES = [0, 10, 20, 30, 40, 50]
 
 # BARABÁSI-ALBERT PARAMETERS
 # m = edges to attach from new node to existing nodes
-# Original: range(1000, 1000^2, 100000) = range(1000, 1000000, 100000)
-# But m must be < n_voters (1000), so this doesn't make sense
-# Interpreting as: test different connectivity levels
-# Using reasonable m values for n=1000
-BA_M_VALUES = [0, 10, 20, 30, 40, 50]
+# Removed 0 because m must be >= 1
+BA_M_VALUES = [10, 20, 30, 40, 50]
 
 # ERDŐS-RÉNYI PARAMETERS  
 # p = edge probability
-# range(0.1, 1, 0.1) = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-ER_P_VALUES = [0, 0.25, 0.5, 0.75, 1.0]
+# Removed 0 to ensure graph connectivity and prevent centrality errors
+ER_P_VALUES = [0.25, 0.5, 0.75, 1.0]
 
 # =============================================================================
 # OUTPUT SETTINGS
