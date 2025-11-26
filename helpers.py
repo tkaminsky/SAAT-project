@@ -59,6 +59,94 @@ def get_centrality_placement(graph, n_high_repute, centrality_type='degree'):
     
     return high_repute_voters
 
+def get_optimized_placement(graph, n_high_repute):
+    """
+    Greedy constructive algorithm to maximize min_i (d_H(i) - d_L(i)).
+    
+    Algorithm (Greedy):
+    1. Start with 0 high-repute agents.
+    2. Loop `n_high_repute` times.
+    3. In each iteration, select the ONE best node to become high-repute.
+       The "best" node is the one that maximizes the minimum score in the graph.
+       Tie-breaker: choose the node that results in the fewest voters having that minimum score.
+    
+    Args:
+        graph: adjacency matrix (numpy array)
+        n_high_repute: number of high-repute voters to select
+        
+    Returns:
+        Array of indices of high-repute voters
+    """
+    n_voters = graph.shape[0]
+    
+    # Calculate degrees once
+    degrees = np.sum(graph, axis=1)
+    
+    # Track selected high repute agents (initially none)
+    selected_mask = np.zeros(n_voters, dtype=bool)
+    
+    # Initial scores: d_H is 0, so score = -degree
+    # Formula: score = d_H - d_L = d_H - (degree - d_H) = 2*d_H - degree
+    current_scores = -degrees.astype(float)
+    
+    for _ in range(n_high_repute):
+        # 1. Identify bottlenecks: nodes with the current global minimum score
+        min_score = np.min(current_scores)
+        bottlenecks = np.where(current_scores == min_score)[0]
+        
+        # 2. Identify candidates: Unselected neighbors of bottlenecks
+        # Optimization: Only placing an agent near a bottleneck can improve the minimum score.
+        candidates = set()
+        for b in bottlenecks:
+            # Get neighbors of b
+            nbrs = np.where(graph[b] > 0)[0]
+            for nbr in nbrs:
+                if not selected_mask[nbr]:
+                    candidates.add(nbr)
+        
+        candidates = list(candidates)
+        
+        # Fallback: If bottlenecks have no available neighbors (e.g. they are surrounded by 
+        # high-repute agents already), pick the unselected node with highest degree 
+        # to maximize general impact.
+        if not candidates:
+            remaining = np.where(~selected_mask)[0]
+            if len(remaining) == 0:
+                break
+            best_candidate = remaining[np.argmax(degrees[remaining])]
+        else:
+            # 3. Greedy Selection
+            best_candidate = -1
+            best_new_min = -np.inf
+            best_bottleneck_count = np.inf
+            
+            for cand in candidates:
+                # Simulate adding this candidate
+                # The score of all neighbors of 'cand' increases by 2
+                change_vector = 2 * graph[:, cand]
+                potential_scores = current_scores + change_vector
+                
+                new_min = np.min(potential_scores)
+                
+                # Maximax strategy: Maximize the Minimum score
+                # Tie-breaking: If min scores are equal, pick the one that leaves FEWER nodes at that min score
+                if new_min > best_new_min:
+                    best_new_min = new_min
+                    best_bottleneck_count = np.sum(potential_scores == new_min)
+                    best_candidate = cand
+                elif new_min == best_new_min:
+                    count = np.sum(potential_scores == new_min)
+                    if count < best_bottleneck_count:
+                        best_bottleneck_count = count
+                        best_candidate = cand
+        
+        # 4. Commit Selection
+        selected_mask[best_candidate] = True
+        # Update global scores for next iteration
+        current_scores += 2 * graph[:, best_candidate]
+        
+    return np.where(selected_mask)[0]
+
 
 def get_peripheral_placement(graph, n_high_repute):
     """
