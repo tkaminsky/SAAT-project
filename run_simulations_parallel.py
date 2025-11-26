@@ -28,7 +28,7 @@ from collections import defaultdict
 
 from graphs import make_tribell, make_ER, make_BA
 from voter_env import VoterEnv
-from voter_placement import (
+from helpers import (
     get_centrality_placement, 
     get_peripheral_placement, 
     get_random_placement,
@@ -169,12 +169,30 @@ def run_parallel_experiment_suite(graph_name, graph_generator, graph_params_list
         results_store = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
         
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            # Map returns results in order, but we can use as_completed for progress bar
-            futures = [executor.submit(execute_simulation_task, task) for task in tasks]
-            
-            for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="  Simulating", leave=False):
-                res_pL, res_fracH, res_pH, res_method, accuracy = future.result()
-                results_store[res_pL][res_fracH][res_method][res_pH] = accuracy
+            futures = []
+            try:
+                # Map returns results in order, but we can use as_completed for progress bar
+                futures = [executor.submit(execute_simulation_task, task) for task in tasks]
+                
+                for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="  Simulating", leave=False):
+                    res_pL, res_fracH, res_pH, res_method, accuracy = future.result()
+                    results_store[res_pL][res_fracH][res_method][res_pH] = accuracy
+                    
+            except KeyboardInterrupt:
+                print("\n\n" + "!"*80)
+                print("CAUGHT KEYBOARD INTERRUPT - STOPPING")
+                print("!"*80)
+                print("Cancelling pending tasks...")
+                
+                # Attempt to cancel all pending futures
+                for f in futures:
+                    f.cancel()
+                    
+                # Force shutdown of the pool without waiting for current tasks
+                executor.shutdown(wait=False)
+                
+                print("Pool shutdown. Exiting.")
+                sys.exit(1)
         
         # D. Generate Plots (Sequential)
         print("  > Generating plots...")

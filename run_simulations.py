@@ -42,7 +42,7 @@ from graphs import make_tribell, make_ER, make_BA
 from voter_env import VoterEnv
 
 # Updated import to point to the file containing our new function
-from voter_placement import (
+from helpers import (
     get_centrality_placement, 
     get_peripheral_placement, 
     get_random_placement,

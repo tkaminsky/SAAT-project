@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+__init__.py
 
 # --- Virtual Environments (Keep these ignored!) ---
 .venv/
