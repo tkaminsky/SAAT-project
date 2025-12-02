@@ -16,7 +16,7 @@ class VoterEnv:
         graph=None,
         p_correct=None,
         probs_per_voter=None,
-        headless=False,
+        headless=True,
         record_data=False,
         seed=None
     ):
@@ -47,8 +47,6 @@ class VoterEnv:
         # self.pos = nx.spring_layout(G, seed=42)
         self.pos = nx.circular_layout(G)
         self.record_data = record_data
-
-        # np.random.seed(seed)
 
         # Headless config
         self.headless = headless
@@ -177,14 +175,15 @@ class VoterEnv:
         - Interactive mode: just steps; call plot_preferences() manually if you want visuals.
         - Headless mode: records an MP4 of the preferences over time to ./experiments/experiment[TIMESTAMP]/preferences.mp4
         """
-        if not self.headless:
-            # Just simulate; user can call plot_preferences() whenever they like
-            for _ in range(iters):
-                self.step()
-            return
 
         # Headless recording
         if self.record_data:
+            if not self.headless:
+                # Just simulate; user can call plot_preferences() whenever they like
+                for _ in range(iters):
+                    self.step()
+                return
+        
             video_path = os.path.join(self.out_dir, "preferences.mp4")
             fig, ax = plt.subplots()
 
@@ -206,6 +205,10 @@ class VoterEnv:
                     writer.grab_frame()
 
             plt.close(fig)
+        else:
+            for _ in range(iters):
+                self.step()
+
 
     def winner(self):
         counts = np.bincount(self.preferences, minlength=self.num_alternatives)

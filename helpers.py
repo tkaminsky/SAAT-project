@@ -21,7 +21,6 @@ def randomly_distribute_voters(n_voters, n_alternatives, margin):
   
   return prob_per_voter
 
-
 def get_centrality_placement(graph, n_high_repute, centrality_type='degree'):
     """
     Select high-repute voters based on centrality measures.
@@ -59,7 +58,7 @@ def get_centrality_placement(graph, n_high_repute, centrality_type='degree'):
     
     return high_repute_voters
 
-def get_optimized_placement(graph, n_high_repute):
+def get_maximin_placement(graph, n_high_repute):
     """
     Greedy constructive algorithm to maximize min_i (d_H(i) - d_L(i)).
     
@@ -146,7 +145,6 @@ def get_optimized_placement(graph, n_high_repute):
         current_scores += 2 * graph[:, best_candidate]
         
     return np.where(selected_mask)[0]
-
 
 def get_peripheral_placement(graph, n_high_repute):
     """

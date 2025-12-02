@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import sys
 import os
+import random  # <-- NEW
 from datetime import datetime
 import argparse
 import concurrent.futures
@@ -32,9 +33,10 @@ from helpers import (
     get_centrality_placement, 
     get_peripheral_placement, 
     get_random_placement,
-    get_optimized_placement,
+    get_maximin_placement,
     create_prob_distribution
 )
+from simulated_annealing import get_simulated_annealing_placement
 
 # =============================================================================
 # CONFIGURATION LOAD
@@ -47,9 +49,35 @@ except ImportError:
     print("ERROR: experiment_config.py not found!")
     sys.exit(1)
 
-# Ensure 'optimized' is in methods if not already
-if 'optimized' not in PLACEMENT_METHODS:
-    PLACEMENT_METHODS.append('optimized')
+# -----------------------------------------------------------------------------
+# GLOBAL BASE SEED FOR REPRODUCIBILITY
+# -----------------------------------------------------------------------------
+# If experiment_config.py defines something like GLOBAL_SEED or RANDOM_SEED,
+# we can use it. Otherwise fall back to a default constant.
+#
+# You can also just set BASE_SEED explicitly here if you prefer.
+# -----------------------------------------------------------------------------
+if "GLOBAL_SEED" in globals():
+    BASE_SEED = GLOBAL_SEED
+else:
+    BASE_SEED = 2380  # <-- change this if you want
+
+print(f"Using BASE_SEED = {BASE_SEED}")
+
+# -----------------------------------------------------------------------------
+# GLOBALS FOR WORKERS
+# -----------------------------------------------------------------------------
+GLOBAL_GRAPH = None
+GLOBAL_N_VOTERS = None
+
+def init_worker(graph, n_voters):
+    """
+    Initializer for each worker process.
+    Sets the global graph and n_voters; RNG is handled per-task.
+    """
+    global GLOBAL_GRAPH, GLOBAL_N_VOTERS
+    GLOBAL_GRAPH = graph
+    GLOBAL_N_VOTERS = n_voters
 
 # =============================================================================
 # WORKER FUNCTIONS (Must be picklable/top-level)
@@ -58,6 +86,7 @@ if 'optimized' not in PLACEMENT_METHODS:
 def run_single_trial_logic(graph, actual_n_voters, high_repute_voters, pH, pL):
     """
     Core simulation logic for a single trial.
+    Assumes RNG has already been seeded in the caller for reproducibility.
     """
     prob_per_voter = create_prob_distribution(actual_n_voters, high_repute_voters, pH, pL)
     
@@ -85,12 +114,25 @@ def execute_simulation_task(task_data):
     Unpacks arguments and runs the experiment for a specific configuration.
     
     Args:
-        task_data: tuple containing (graph, n_voters, fracH, pH, pL, method, n_trials)
+        task_data: tuple containing (task_id, fracH, pH, pL, method, n_trials)
         
     Returns:
         tuple: (pL, fracH, pH, method, average_accuracy)
     """
-    graph, n_voters, fracH, pH, pL, method, n_trials = task_data
+    task_id, fracH, pH, pL, method, n_trials = task_data
+
+    # -------------------------------------------------------------------------
+    # REPRODUCIBLE RNG PER TASK
+    # -------------------------------------------------------------------------
+    # Each task gets its own deterministic seed derived from BASE_SEED
+    # and task_id. This makes results independent of scheduling / CPU count.
+    # -------------------------------------------------------------------------
+    seed = BASE_SEED + task_id
+    np.random.seed(seed)
+    random.seed(seed)
+
+    graph = GLOBAL_GRAPH
+    n_voters = GLOBAL_N_VOTERS
     
     n_high_repute = int(n_voters * fracH)
     total_score = 0.0
@@ -100,10 +142,16 @@ def execute_simulation_task(task_data):
         placements = [get_centrality_placement(graph, n_high_repute, 'degree')] * n_trials
     elif method == 'peripheral':
         placements = [get_peripheral_placement(graph, n_high_repute)] * n_trials
-    elif method == 'optimized':
-        placements = [get_optimized_placement(graph, n_high_repute)] * n_trials
+    elif method == 'maximin':
+        placements = [get_maximin_placement(graph, n_high_repute)] * n_trials
     elif method == 'random':
         placements = [get_random_placement(n_voters, n_high_repute) for _ in range(n_trials)]
+    elif method == 'simulated_annealing':
+        placement = get_simulated_annealing_placement(graph, n_high_repute, (pH, pL), 'analytic')
+        placements = [placement] * n_trials
+    elif method == 'mc_annealing':
+        placement = get_simulated_annealing_placement(graph, n_high_repute, (pH, pL), 'mc')
+        placements = [placement] * n_trials
     else:
         raise ValueError(f"Unknown method: {method}")
         
@@ -135,32 +183,37 @@ def run_parallel_experiment_suite(graph_name, graph_generator, graph_params_list
     print(f"{'='*80}\n")
     
     # 1. Iterate over Graph Configurations (Sequential)
-    # We do this sequentially because graphs can be large, and we don't want 
-    # to hold 100 different adjacency matrices in memory at once.
     for config_idx, graph_params in enumerate(graph_params_list):
         
+        # OPTIONAL: Make graph generation itself reproducible relative to BASE_SEED
+        # If you want different graphs per config but deterministic across runs,
+        # you can reseed here with an offset based on config_idx:
+        # np.random.seed(BASE_SEED + 10_000 * config_idx)
+        # random.seed(BASE_SEED + 10_000 * config_idx)
+
         # A. Generate Graph
         graph_gen_params = {k: v for k, v in graph_params.items() if k != 'actual_n_voters'}
         graph = graph_generator(**graph_gen_params)
-        graph = graph - np.eye(graph.shape[0]) # Remove self-loops
+        graph = graph - np.eye(graph.shape[0])  # Remove self-loops
         actual_n_voters = graph_params.get('actual_n_voters', N_VOTERS)
         
         param_str = '_'.join([f"{k}{v}" for k, v in graph_gen_params.items()])
         print(f"Processing Config {config_idx+1}/{total_configs}: {param_str} (n={actual_n_voters})")
 
         # B. Prepare Task Batch
-        # We create a task for every single point on every line of every plot
         tasks = []
         
         # Cartesian product of all variables
+        # We attach a deterministic task_id to each configuration
+        task_id = 0
         for pL, fracH, pH, method in itertools.product(PL_VALUES, FRACH_VALUES, PH_VALUES, PLACEMENT_METHODS):
             
             # Skip edge cases logic if configured
             if SKIP_EDGE_CASES and (fracH == 0.0 or fracH == 1.0):
                 continue
-                
-            task = (graph, actual_n_voters, fracH, pH, pL, method, N_TRIALS)
-            tasks.append(task)
+
+            tasks.append((task_id, fracH, pH, pL, method, N_TRIALS))
+            task_id += 1
             
         print(f"  > Generated {len(tasks)} simulation tasks. executing in parallel...")
         
@@ -168,13 +221,21 @@ def run_parallel_experiment_suite(graph_name, graph_generator, graph_params_list
         # Results storage: results[pL][fracH][method][pH] = accuracy
         results_store = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
         
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=os.cpu_count(),
+            initializer=init_worker,
+            initargs=(graph, actual_n_voters),
+        ) as executor:
             futures = []
             try:
-                # Map returns results in order, but we can use as_completed for progress bar
                 futures = [executor.submit(execute_simulation_task, task) for task in tasks]
                 
-                for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="  Simulating", leave=False):
+                for future in tqdm(
+                    concurrent.futures.as_completed(futures),
+                    total=len(futures),
+                    desc="  Simulating",
+                    leave=False
+                ):
                     res_pL, res_fracH, res_pH, res_method, accuracy = future.result()
                     results_store[res_pL][res_fracH][res_method][res_pH] = accuracy
                     
@@ -184,13 +245,10 @@ def run_parallel_experiment_suite(graph_name, graph_generator, graph_params_list
                 print("!"*80)
                 print("Cancelling pending tasks...")
                 
-                # Attempt to cancel all pending futures
                 for f in futures:
                     f.cancel()
                     
-                # Force shutdown of the pool without waiting for current tasks
                 executor.shutdown(wait=False)
-                
                 print("Pool shutdown. Exiting.")
                 sys.exit(1)
         
@@ -203,38 +261,41 @@ def run_parallel_experiment_suite(graph_name, graph_generator, graph_params_list
                 if SKIP_EDGE_CASES and (fracH == 0.0 or fracH == 1.0):
                     continue
                 
-                # Setup Plot
                 fig, ax = plt.subplots(figsize=FIGURE_SIZE)
                 
                 colors = {
                     'random': 'blue', 
                     'central': 'red', 
                     'peripheral': 'green',
-                    'optimized': 'purple'
+                    'maximin': 'purple',
+                    'simulated_annealing': 'orange',
+                    'mc_annealing': 'cyan'
                 }
                 markers = {
                     'random': 'o', 
                     'central': 's', 
                     'peripheral': '^',
-                    'optimized': '*'
+                    'maximin': '*',
+                    'simulated_annealing': 'D',
+                    'mc_annealing': 'v'
                 }
                 
-                # Plot lines for each method
                 for method in PLACEMENT_METHODS:
-                    # Extract sorted (pH, acc) pairs
                     data_points = results_store[pL][fracH][method]
-                    if not data_points: continue
+                    if not data_points:
+                        continue
                     
                     sorted_ph = sorted(data_points.keys())
                     sorted_acc = [data_points[ph] for ph in sorted_ph]
                     
-                    ax.plot(sorted_ph, sorted_acc,
-                           color=colors.get(method, 'black'),
-                           marker=markers.get(method, '.'),
-                           label=method.capitalize(),
-                           linewidth=2, markersize=6, alpha=0.7)
+                    ax.plot(
+                        sorted_ph, sorted_acc,
+                        color=colors.get(method, 'black'),
+                        marker=markers.get(method, '.'),
+                        label=method.capitalize(),
+                        linewidth=2, markersize=6, alpha=0.7
+                    )
                 
-                # Styling
                 ax.set_xlabel('pH (High-Repute Voter Accuracy)', fontsize=12)
                 ax.set_ylabel('Proportion Correct', fontsize=12)
                 title = f"{graph_name.upper()}: {param_str}\n"
@@ -247,7 +308,6 @@ def run_parallel_experiment_suite(graph_name, graph_generator, graph_params_list
                 
                 plt.tight_layout()
                 
-                # Save
                 filename = f"{graph_name}_{param_str}_pL{pL:.2f}_fracH{fracH:.2f}.png"
                 filepath = os.path.join(exp_dir, filename)
                 plt.savefig(filepath, dpi=DPI, bbox_inches='tight')
@@ -267,7 +327,8 @@ def run_tribell_parallel():
     for k in TRIBELL_K_VALUES:
         target_n = (N_VOTERS - 2*k) / 3
         n_per_region = int(round(target_n))
-        if n_per_region < 1: continue
+        if n_per_region < 1:
+            continue
         actual_n = 3 * n_per_region + 2 * k
         graph_params.append({'n': n_per_region, 'k': k, 'actual_n_voters': actual_n})
     return run_parallel_experiment_suite('tribell', make_tribell, graph_params)
@@ -275,14 +336,16 @@ def run_tribell_parallel():
 def run_BA_parallel():
     graph_params = []
     for m in BA_M_VALUES:
-        if m >= N_VOTERS or m < 1: continue
+        if m >= N_VOTERS or m < 1:
+            continue
         graph_params.append({'n': N_VOTERS, 'm': m})
     return run_parallel_experiment_suite('BA', make_BA, graph_params)
 
 def run_ER_parallel():
     graph_params = []
     for p in ER_P_VALUES:
-        if p <= 0: continue
+        if p <= 0:
+            continue
         graph_params.append({'n': N_VOTERS, 'p': float(p)})
     return run_parallel_experiment_suite('ER', make_ER, graph_params)
 
@@ -296,8 +359,11 @@ def main():
     print("="*80)
     
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+    # Seed the main process RNGs once for reproducible graph generation, etc.
+    np.random.seed(BASE_SEED)
+    random.seed(BASE_SEED)
     
-    # Run based on args
     parser = argparse.ArgumentParser(description='Run parallel systematic experiments')
     parser.add_argument('--test', action='store_true', help='Test mode')
     parser.add_argument('--tribell', action='store_true')
@@ -317,7 +383,7 @@ def main():
     else:
         run_tribell_parallel()
         run_BA_parallel()
-        run_ER_parallel()
+        #run_ER_parallel()
         
     print("\nAll parallel experiments completed.")
 
