@@ -17,6 +17,7 @@ class VoterEnv:
         p_correct=None,
         probs_per_voter=None,
         headless=False,
+        record_data=False,
         seed=None
     ):
         self.num_voters = num_voters
@@ -45,23 +46,25 @@ class VoterEnv:
         G = nx.from_numpy_array(self.graph)
         # self.pos = nx.spring_layout(G, seed=42)
         self.pos = nx.circular_layout(G)
+        self.record_data = record_data
 
         # np.random.seed(seed)
 
         # Headless config
         self.headless = headless
         self.out_dir = None
-        if self.headless:
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self.out_dir = os.path.join(".", "experiments", f"experiment{ts}")
-            os.makedirs(self.out_dir, exist_ok=True)
+        if record_data:
+            if self.headless:
+                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                self.out_dir = os.path.join(".", "experiments", f"experiment{ts}")
+                os.makedirs(self.out_dir, exist_ok=True)
 
 
         # Initialize state
         self.reset(probs_per_voter=probs_per_voter)
 
         # If headless, save reliability graph immediately at init
-        if self.headless:
+        if self.headless and record_data:
             self.plot_reliability(
                 save_path=os.path.join(self.out_dir, "reliability.png")
             )
@@ -181,27 +184,28 @@ class VoterEnv:
             return
 
         # Headless recording
-        video_path = os.path.join(self.out_dir, "preferences.mp4")
-        fig, ax = plt.subplots()
+        if self.record_data:
+            video_path = os.path.join(self.out_dir, "preferences.mp4")
+            fig, ax = plt.subplots()
 
-        # Set up writer (requires ffmpeg to be available in the environment)
-        Writer = animation.FFMpegWriter
-        writer = Writer(fps=fps, metadata=dict(artist="VoterEnv"), bitrate=1800)
+            # Set up writer (requires ffmpeg to be available in the environment)
+            Writer = animation.FFMpegWriter
+            writer = Writer(fps=fps, metadata=dict(artist="VoterEnv"), bitrate=1800)
 
-        with writer.saving(fig, video_path, dpi=200):
-            # Initial frame (iteration 0)
-            self._draw_preferences(ax=ax, title_suffix=" (iteration 0)")
-            fig.tight_layout()
-            writer.grab_frame()
-
-            # Subsequent frames
-            for t in range(1, iters + 1):
-                self.step()
-                self._draw_preferences(ax=ax, title_suffix=f" (iteration {t})")
+            with writer.saving(fig, video_path, dpi=200):
+                # Initial frame (iteration 0)
+                self._draw_preferences(ax=ax, title_suffix=" (iteration 0)")
                 fig.tight_layout()
                 writer.grab_frame()
 
-        plt.close(fig)
+                # Subsequent frames
+                for t in range(1, iters + 1):
+                    self.step()
+                    self._draw_preferences(ax=ax, title_suffix=f" (iteration {t})")
+                    fig.tight_layout()
+                    writer.grab_frame()
+
+            plt.close(fig)
 
     def winner(self):
         counts = np.bincount(self.preferences, minlength=self.num_alternatives)

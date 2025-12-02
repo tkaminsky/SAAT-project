@@ -23,7 +23,7 @@ Usage:
     python systematic_experiments_fixed.py --BA         # Only BA
     python systematic_experiments_fixed.py --ER         # Only ER
 """
-
+import cProfile
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -40,6 +40,7 @@ from helpers import (
     get_centrality_placement, 
     get_peripheral_placement, 
     get_random_placement,
+    get_optimized_placement,
     create_prob_distribution
 )
 
@@ -106,6 +107,8 @@ def run_single_experiment(graph, n_voters, fracH, pH, pL, placement_methods, act
                 high_repute_voters = get_centrality_placement(graph, n_high_repute, 'degree')
             elif method == 'peripheral':
                 high_repute_voters = get_peripheral_placement(graph, n_high_repute)
+            elif method == 'optimized':
+                high_repute_voters = get_optimized_placement(graph, n_high_repute)
             else:
                 raise ValueError(f"Unknown placement method: {method}")
             
@@ -209,10 +212,10 @@ def run_experiment_suite(graph_name, graph_generator, graph_params_list):
                 
                 # Create plot
                 fig, ax = plt.subplots(figsize=FIGURE_SIZE)
-                
-                colors = {'random': 'blue', 'central': 'red', 'peripheral': 'green'}
-                markers = {'random': 'o', 'central': 's', 'peripheral': '^'}
-                
+
+                colors = {'random': 'blue', 'central': 'red', 'peripheral': 'green', 'optimized': 'purple'}
+                markers = {'random': 'o', 'central': 's', 'peripheral': '^', 'optimized': 'D'}
+
                 for method in PLACEMENT_METHODS:
                     ax.plot(PH_VALUES, results[method], 
                            color=colors[method], marker=markers[method],
