@@ -147,8 +147,8 @@ def execute_simulation_task(task_data):
     elif method == 'random':
         placements = [get_random_placement(n_voters, n_high_repute) for _ in range(n_trials)]
     elif method == 'simulated_annealing':
-        placement = get_simulated_annealing_placement(graph, n_high_repute, (pH, pL), 'analytic')
-        placements = [placement] * n_trials
+        placements = [get_simulated_annealing_placement(graph, n_high_repute, (pH, pL), 'analytic') for _ in range(n_trials)]
+        # placements = [placement] * n_trials
     elif method == 'mc_annealing':
         placement = get_simulated_annealing_placement(graph, n_high_repute, (pH, pL), 'mc')
         placements = [placement] * n_trials
@@ -381,9 +381,9 @@ def main():
     elif args.ER:
         run_ER_parallel()
     else:
-        run_tribell_parallel()
-        run_BA_parallel()
-        #run_ER_parallel()
+        # run_tribell_parallel()
+        # run_BA_parallel()
+        run_ER_parallel()
         
     print("\nAll parallel experiments completed.")
 

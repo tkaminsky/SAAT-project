@@ -11,22 +11,22 @@ import random
 # =============================================================================
 
 # Make a random seed using an arbirary string
-GLOBAL_SEED = int.from_bytes(b'little test', 'little') % (2**32 - 1)
+GLOBAL_SEED = int.from_bytes(b'walla walla sweet onions', 'little') % (2**32 - 1)
 
 # Fixed parameters
 N_VOTERS = 100
-N_TRIALS = 100  # Trials per configuration (increase for more accuracy, decreases speed)
+N_TRIALS = 500  # Trials per configuration (increase for more accuracy, decreases speed)
 N_ITERATIONS = 25  # Convergence iterations per trial
 
 # Variable parameters (these define the x-axis and different plots)
 PH_VALUES = [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00]  # x-axis
 # PH_VALUES = [0.50, 0.60, 0.70, 0.80, 0.90, 1.00]  # x-axis
-PL_VALUES = [0.25]  # Each pL produces separate set of plots
+PL_VALUES = [0.1, 0.25, 0.5]  # Each pL produces separate set of plots
 FRACH_VALUES = [0.10, 0.25, 0.50]  # Each fracH produces separate plot
 
 # Placement methods to compare (appear as different lines on same plot)
 # Added 'maximin' to the list
-PLACEMENT_METHODS = ['random', 'central', 'peripheral', 'maximin', 'simulated_annealing', 'mc_annealing']
+PLACEMENT_METHODS = ['random', 'central', 'peripheral', 'maximin', 'simulated_annealing']
 
 # =============================================================================
 # GRAPH-SPECIFIC PARAMETERS
@@ -39,18 +39,18 @@ TRIBELL_K_VALUES = [0, 10]
 # BARABÁSI-ALBERT PARAMETERS
 # m = edges to attach from new node to existing nodes
 # Removed 0 because m must be >= 1
-BA_M_VALUES = [10, 50]
+BA_M_VALUES = [1, 2, 3, 5, 10, 20]
 
 # ERDŐS-RÉNYI PARAMETERS  
 # p = edge probability
 # Removed 0 to ensure graph connectivity and prevent centrality errors
-ER_P_VALUES = [0.25, 0.50, 0.75]
+ER_P_VALUES = [0.75]
 
 # =============================================================================
 # OUTPUT SETTINGS
 # =============================================================================
 
-OUTPUT_DIR = 'small_test'
+OUTPUT_DIR = 'final_experiment_set'
 DPI = 200  # Resolution of saved plots
 FIGURE_SIZE = (10, 6)  # Width, height in inches
 

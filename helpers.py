@@ -146,19 +146,42 @@ def get_maximin_placement(graph, n_high_repute):
         
     return np.where(selected_mask)[0]
 
-def get_peripheral_placement(graph, n_high_repute):
+def get_peripheral_placement(graph, n_high_repute, centrality_type='degree'):
     """
-    Select high-repute voters from peripheral (low-degree) nodes.
+    Select high-repute voters based on centrality measures.
     
     Args:
         graph: adjacency matrix (numpy array)
         n_high_repute: number of high-repute voters to select
+        centrality_type: 'degree', 'betweenness', 'pagerank', 'eigenvector'
     
     Returns:
         Array of indices of high-repute voters
     """
-    # Get nodes with lowest degree centrality
-    return get_centrality_placement(graph, n_high_repute, centrality_type='degree')[-n_high_repute:]
+    # Remove self-loops for centrality calculation
+    graph_no_loops = graph - np.eye(graph.shape[0])
+    G = nx.from_numpy_array(graph_no_loops)
+    
+    if centrality_type == 'degree':
+        centrality = nx.degree_centrality(G)
+    elif centrality_type == 'betweenness':
+        centrality = nx.betweenness_centrality(G)
+    elif centrality_type == 'pagerank':
+        centrality = nx.pagerank(G)
+    elif centrality_type == 'eigenvector':
+        try:
+            centrality = nx.eigenvector_centrality(G, max_iter=1000)
+        except:
+            # Fallback to degree centrality if eigenvector doesn't converge
+            centrality = nx.degree_centrality(G)
+    else:
+        raise ValueError(f"Unknown centrality type: {centrality_type}")
+    
+    # Sort nodes by centrality and select top n_high_repute
+    sorted_nodes = sorted(centrality.items(), key=lambda x: x[1], reverse=True)
+    high_repute_voters = np.array([node for node, _ in sorted_nodes[-n_high_repute:]])
+    
+    return high_repute_voters
 
 
 def get_clustered_placement(graph, n_high_repute, start_node=None):
